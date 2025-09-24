@@ -1,5 +1,5 @@
 
-# 📚 Learning Notes for Year 3 Semester 1 —— `learning-note-for-Y3S1`
+# 📚 Learning Notes for Year 3 Semester 1 (`learning-note-for-Y3S1`)
 
 > 🧠 由 [wink-wink-wink555](https://github.com/wink-wink-wink555) 整理  
 > 📅 大三上学期 · 数据科学与大数据技术专业课程学习笔记 & AI问答精华

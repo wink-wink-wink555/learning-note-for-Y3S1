@@ -1,5 +1,5 @@
 
-# 📚 Learning Note for Year 3 Semester 1 —— `learning-note-for-Y3S1`
+# 📚 Learning Notes for Year 3 Semester 1 —— `learning-note-for-Y3S1`
 
 > 🧠 由 [wink-wink-wink555](https://github.com/wink-wink-wink555) 整理  
 > 📅 大三上学期 · 数据科学与大数据技术专业课程学习笔记 & AI问答精华
@@ -17,7 +17,7 @@
 
 目标是：**把“不会的”变成“会的”，把“模糊的”变成“清晰的”**。
 
-✨ **持续更新中（即日起至2026年1月），欢迎 Star & Watch！一起进步！** ✨
+✨ **持续更新中（至2026年1月），欢迎 Star & Watch！一起进步！** ✨
 
 ---
 

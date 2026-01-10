@@ -1,4 +1,6 @@
-# 高校教材管理系统 - 权限管理规划与ER图
+# 高校教材管理系统 - 权限管理规划与ER图 (v2.0)
+
+> **版本说明**：本版本修正了订单管理的数据权限规则，明确了普通用户和教师用户的权限边界。
 
 ## 一、数据库E-R图（实体关系图）
 
@@ -9,7 +11,7 @@
 │   用户 (User)   │
 ├─────────────────┤
 │ PK: user_id     │
-│ username        │
+│ username ⭐     │  ← 唯一标识，用于权限判断
 │ password        │
 │ real_name       │
 │ role ⭐         │
@@ -88,7 +90,7 @@
 │order_quantity    │                                     
 │order_date        │                                     
 │expected_date     │                                     
-│order_person      │                                     
+│order_person ⭐   │  ← 存储用户的 username（非 real_name）
 │order_status ⭐   │                                     
 │arrived_quantity  │                                     
 │remarks           │                                     
@@ -109,6 +111,7 @@
 
 ### 1.3 关键约束
 
+- **order_person** 字段存储的是用户的 `username`（用户名），而非 `real_name`（真实姓名）
 - 教材删除时，必须保护订购单、入库单、领用单的数据完整性 (RESTRICT)
 - 库存数量不能为负数
 - 入库时自动更新订单状态（已到货/部分到货）
@@ -116,17 +119,17 @@
 
 ---
 
-## 二、角色权限矩阵
+## 二、角色权限矩阵（v2.0 修正版）
 
 ### 2.1 角色定义
 
 系统定义4种角色：
 1. **管理员** - 系统最高权限，管理所有数据和用户
-2. **仓库管理员** - 负责入库、出库、库存管理
-3. **教师** - 可以提交领用申请、查看教材信息
-4. **普通用户** - 只读权限，查看公开信息
+2. **仓库管理员** - 负责入库、出库、库存管理，可为任何人创建订单
+3. **教师** - 可以为自己或普通用户创建订单、查看相关订单
+4. **普通用户** - 只能为自己创建订单、查看自己的订单
 
-### 2.2 权限矩阵表
+### 2.2 权限矩阵表（订单管理部分已修正 ⚠️）
 
 | 功能模块 | 操作 | 管理员 | 仓库管理员 | 教师 | 普通用户 |
 |---------|------|--------|-----------|------|----------|
@@ -153,13 +156,13 @@
 | | 创建教材 | ✅ | ❌ | ❌ | ❌ |
 | | 编辑教材 | ✅ | ❌ | ❌ | ❌ |
 | | 删除教材 | ✅ | ❌ | ❌ | ❌ |
-| **订购管理** |
-| | 查看订单列表 | ✅ | ✅ | ✅ (仅自己的) | ❌ |
-| | 查看订单详情 | ✅ | ✅ | ✅ (仅自己的) | ❌ |
-| | 创建订单 | ✅ | ✅ | ✅ | ❌ |
-| | 编辑订单 | ✅ | ✅ | ✅ (待审核状态) | ❌ |
+| **订购管理** ⚠️ 修正 |
+| | 查看订单列表 | ✅ 全部 | ✅ 全部 | ✅ 自己+普通用户的 | ✅ 仅自己的 |
+| | 查看订单详情 | ✅ | ✅ | ✅ 自己+普通用户的 | ✅ 仅自己的 |
+| | 创建订单 | ✅ 任何人 | ✅ 任何人 | ✅ 自己+普通用户 | ✅ 仅自己 |
+| | 编辑订单 | ✅ | ✅ | ✅ 自己的待审核 | ✅ 自己的待审核 |
 | | 审核订单 | ✅ | ✅ | ❌ | ❌ |
-| | 取消订单 | ✅ | ✅ | ✅ (待审核状态) | ❌ |
+| | 取消订单 | ✅ | ✅ | ✅ 自己+普通用户的待审核 | ✅ 自己的待审核 |
 | **入库管理** |
 | | 查看入库列表 | ✅ | ✅ | ❌ | ❌ |
 | | 查看入库详情 | ✅ | ✅ | ❌ | ❌ |
@@ -186,43 +189,117 @@
 | | 按日期范围统计 | ✅ | ✅ | ✅ | ❌ |
 | | 库存预警报表 | ✅ | ✅ | ❌ | ❌ |
 
-### 2.3 权限说明
+### 2.3 订单管理权限详解（v2.0 核心修正）
 
-#### 管理员权限
-- 拥有系统所有功能的完全访问权限
-- 可以管理用户、出版社、教材类型、教材等基础数据
-- 可以执行所有业务操作（订购、入库、领用）
-- 可以查看所有统计报表
+#### 📌 普通用户订单权限
 
-#### 仓库管理员权限
-- 可以查看所有公共信息（出版社、教材类型、教材）
-- 可以创建和管理订购单
-- **核心职责**：入库管理（创建、编辑入库单）
-- 可以审批领用申请并发放教材
-- 可以查看库存信息和预警
-- 可以查看统计报表
+| 操作 | 权限规则 |
+|------|---------|
+| **查看订单列表** | 只能看到 `order_person` = 自己用户名 的订单 |
+| **查看订单详情** | 只能看到 `order_person` = 自己用户名 的订单 |
+| **创建订单** | 只能创建 `order_person` = 自己用户名 的订单 |
+| **编辑订单** | 只能编辑 `order_person` = 自己用户名 且状态为"待审核"的订单 |
+| **取消订单** | 只能取消 `order_person` = 自己用户名 且状态为"待审核"的订单 |
 
-#### 教师权限
-- 可以查看所有教材、出版社、类型信息
-- 可以提交订购申请
-- 可以查看自己提交的订单（订购人=当前用户）
-- **核心职责**：领用教材（提交领用申请）
-- 可以查看自己的领用记录
-- 可以查看库存信息（只读）
-- 可以查看基本统计报表
+#### 📌 教师用户订单权限
 
-#### 普通用户权限
-- 只能查看基本的教材、出版社、类型信息
-- 可以提交领用申请（如学生领取教材）
-- 只能查看自己的领用记录
-- 可以查看库存信息（只读）
-- 权限最小化
+| 操作 | 权限规则 |
+|------|---------|
+| **查看订单列表** | 可以看到 `order_person` = 自己 **或** `order_person` 是普通用户 的订单 |
+| **查看订单详情** | 可以看到 `order_person` = 自己 **或** `order_person` 是普通用户 的订单 |
+| **创建订单** | 可以为自己或普通用户创建订单（下拉框显示自己+所有普通用户） |
+| **编辑订单** | 只能编辑 `order_person` = 自己 且状态为"待审核"的订单 |
+| **取消订单** | 可以取消 `order_person` = 自己 **或** `order_person` 是普通用户 且状态为"待审核"的订单 |
+
+#### 📌 管理员/仓库管理员订单权限
+
+| 操作 | 权限规则 |
+|------|---------|
+| **查看订单列表** | 可以看到所有订单 |
+| **查看订单详情** | 可以看到所有订单 |
+| **创建订单** | 可以为任何用户创建订单（下拉框显示所有用户） |
+| **编辑订单** | 可以编辑任何订单 |
+| **审核订单** | 可以审核任何"待审核"状态的订单 |
+| **取消订单** | 可以取消任何非"已到货"/"已取消"状态的订单 |
+
+### 2.4 创建订单时的订购人下拉框规则
+
+| 角色 | 下拉框显示内容 | 说明 |
+|-----|--------------|------|
+| **管理员** | 所有用户 | 可以为任何人创建订单 |
+| **仓库管理员** | 所有用户 | 可以为任何人创建订单 |
+| **教师** | 自己 + 所有普通用户 | 可以为自己或普通用户创建订单 |
+| **普通用户** | 仅自己 | 只能为自己创建订单（下拉框锁定） |
 
 ---
 
-## 三、触发器和存储过程使用情况
+## 三、技术实现要点（v2.0 修正）
 
-### 3.1 触发器（已自动生效）
+### 3.1 JWT Token 结构
+
+```python
+# 登录时生成的 JWT Token 结构
+{
+    "sub": "1",           # user_id（字符串格式）
+    "username": "user01", # 用户名 ⭐ 用于权限判断
+    "role": "普通用户",   # 角色
+    "real_name": "张三"   # 真实姓名
+}
+```
+
+### 3.2 获取当前用户信息的正确方式
+
+```python
+from flask_jwt_extended import get_jwt
+
+current_user = get_jwt()
+
+# ❌ 错误写法：sub 是 user_id，不是 username
+username = current_user.get('sub')  
+
+# ✅ 正确写法：从 additional_claims 获取 username
+username = current_user.get('username')
+role = current_user.get('role')
+real_name = current_user.get('real_name')
+```
+
+### 3.3 订单数据权限过滤示例
+
+```python
+# 获取订单列表时的数据权限过滤
+if role == '普通用户':
+    # 普通用户只能查看 order_person = 自己的订单
+    order_person = username
+elif role == '教师':
+    # 教师可以查看 order_person = 自己 或 普通用户 的订单
+    allowed_roles = ['教师', '普通用户']
+    current_username = username
+# 管理员和仓库管理员不设限制
+```
+
+### 3.4 订购人下拉框 API 返回规则
+
+```python
+@api_v1.route('/auth/users', methods=['GET'])
+@jwt_required()
+def get_users():
+    """获取用户列表（用于订购人下拉选择）"""
+    if user_role in ['管理员', '仓库管理员']:
+        # 返回所有用户
+        users = user_dao.get_all_users()
+    elif user_role == '教师':
+        # 返回自己 + 所有普通用户
+        users = [self] + get_users_by_role('普通用户')
+    else:
+        # 普通用户只返回自己
+        users = [self]
+```
+
+---
+
+## 四、触发器和存储过程使用情况
+
+### 4.1 触发器（已自动生效）
 
 | 触发器名称 | 触发时机 | 作用 | 代码中的体现 |
 |-----------|---------|------|-------------|
@@ -232,191 +309,95 @@
 | `trg_stock_in_before_delete` | 删除入库记录前 | 回退库存和订单数量 | 删除入库单时自动回退 |
 | `trg_purchase_order_before_update` | 更新订单前 | 防止已取消订单被修改 | 保护数据完整性 |
 
-**触发器是数据库层面自动执行的，Python代码无需显式调用。**
-
-### 3.2 存储过程（需要在Python中调用）
+### 4.2 存储过程（需要在Python中调用）
 
 | 存储过程名称 | 功能 | 当前使用情况 | 位置 |
 |-------------|------|-------------|------|
-| `sp_statistics_by_type()` | 按教材类型统计 | ✅ 已使用 | `app/services/statistics_service.py:17` |
-| `sp_statistics_by_publisher()` | 按出版社统计 | ✅ 已使用 | `app/services/statistics_service.py:37` |
-| `sp_statistics_by_textbook(id)` | 按教材统计 | ✅ 已使用 | `app/services/statistics_service.py:57` |
-| `sp_statistics_by_date_range(start, end)` | 按日期范围统计 | ✅ 已使用 | `app/services/statistics_service.py:80` |
-| `sp_inventory_warning()` | 库存预警查询 | ✅ 已使用 | `app/services/statistics_service.py:97` 和 `app/dao/inventory_dao.py:54` |
-| `sp_generate_order_no()` | 生成订单编号 | ✅ 已使用 | `app/services/purchase_service.py:20` |
-| `sp_generate_stock_in_no()` | 生成入库单号 | ⚠️ 需要使用 | 待实现入库API时调用 |
-| `sp_generate_requisition_no()` | 生成领用单号 | ⚠️ 需要使用 | 待实现领用API时调用 |
-
-### 3.3 待补充功能
-
-需要新增以下API来使用存储过程：
-
-1. **入库管理API** (`app/api/v1/stock_in.py`)
-   - 使用 `sp_generate_stock_in_no()` 生成入库单号
-   - 需要权限控制：仅管理员和仓库管理员可操作
-
-2. **领用管理API** (`app/api/v1/requisition.py`)
-   - 使用 `sp_generate_requisition_no()` 生成领用单号
-   - 需要权限控制：所有用户可申请，仅管理员和仓库管理员可审批
+| `sp_statistics_by_type()` | 按教材类型统计 | ✅ 已使用 | `statistics_service.py` |
+| `sp_statistics_by_publisher()` | 按出版社统计 | ✅ 已使用 | `statistics_service.py` |
+| `sp_statistics_by_textbook(id)` | 按教材统计 | ✅ 已使用 | `statistics_service.py` |
+| `sp_statistics_by_date_range(start, end)` | 按日期范围统计 | ✅ 已使用 | `statistics_service.py` |
+| `sp_inventory_warning()` | 库存预警查询 | ✅ 已使用 | `statistics_service.py` |
+| `sp_generate_order_no()` | 生成订单编号 | ✅ 已使用 | `purchase_service.py` |
+| `sp_generate_stock_in_no()` | 生成入库单号 | ⚠️ 待实现 | - |
+| `sp_generate_requisition_no()` | 生成领用单号 | ⚠️ 待实现 | - |
 
 ---
 
-## 四、实施计划
+## 五、v2.0 修复清单
 
-### 4.1 权限装饰器增强
-- [x] 已有基础权限装饰器 (`permission_required`, `admin_required`, `warehouse_required`)
-- [ ] 新增 `teacher_or_above` 装饰器（教师及以上）
-- [ ] 新增数据权限检查（如：只能查看/编辑自己的记录）
+### 5.1 已修复的问题
 
-### 4.2 新增API模块
-- [ ] 入库管理API (`stock_in.py`)
-  - GET /api/v1/stock-ins - 查询入库列表
-  - POST /api/v1/stock-ins - 创建入库单
-  - GET /api/v1/stock-ins/<id> - 查询入库详情
-  - PUT /api/v1/stock-ins/<id> - 编辑入库单
-  - DELETE /api/v1/stock-ins/<id> - 删除入库单（仅管理员）
+| 问题 | 原因 | 修复方案 |
+|-----|------|---------|
+| 普通用户看不到自己的订单 | `get('sub')` 获取的是 user_id 而非 username | 改为 `get('username')` |
+| 教师看不到自己的订单 | 同上 | 改为 `get('username')` |
+| 普通用户创建订单时看不到自己 | get_users API 使用了错误的 username | 修复 `get('username')` |
+| 教师创建订单时看不到自己 | 同上 | 修复 `get('username')` |
+| 教师无法取消普通用户的订单 | 取消订单权限检查不完整 | 增加教师取消普通用户订单的逻辑 |
 
-- [ ] 领用管理API (`requisition.py`)
-  - GET /api/v1/requisitions - 查询领用列表（过滤当前用户）
-  - POST /api/v1/requisitions - 创建领用申请
-  - GET /api/v1/requisitions/<id> - 查询领用详情
-  - PUT /api/v1/requisitions/<id> - 编辑领用申请
-  - POST /api/v1/requisitions/<id>/approve - 审批领用申请
-  - POST /api/v1/requisitions/<id>/issue - 发放教材
-  - POST /api/v1/requisitions/<id>/reject - 拒绝领用申请
+### 5.2 修改的文件
 
-### 4.3 现有API添加权限控制
-- [ ] 教材API (`textbook.py`)
-  - 查看：所有登录用户
-  - 创建/编辑/删除：仅管理员
-
-- [ ] 出版社API (`publisher.py`)
-  - 查看：所有登录用户
-  - 创建/编辑/删除：仅管理员
-
-- [ ] 教材类型API (`textbook_type.py`)
-  - 查看：所有登录用户
-  - 创建/编辑/删除：仅管理员
-
-- [ ] 订购API (`purchase_order.py`)
-  - 查看：教师及以上（过滤自己的订单）
-  - 创建/编辑：教师及以上
-  - 审核：管理员和仓库管理员
-
-- [ ] 统计API (`statistics.py`)
-  - 基本统计：教师及以上
-  - 库存预警：管理员和仓库管理员
-
-### 4.4 前端页面适配
-- [ ] 根据用户角色显示/隐藏功能按钮
-- [ ] 添加入库管理页面
-- [ ] 添加领用管理页面
+1. `app/api/v1/purchase_order.py` - 所有 `get('sub')` 改为 `get('username')`
+2. `app/api/v1/auth.py` - `get_users` 函数修复 username 获取
+3. `app/templates/orders.html` - 取消按钮权限判断修复
 
 ---
 
-## 五、技术要点
+## 六、测试检查清单（v2.0）
 
-### 5.1 权限检查方式
+### 6.1 普通用户测试
 
-#### 方式1：装饰器检查角色
-```python
-@api_v1.route('/textbooks', methods=['POST'])
-@jwt_required()
-@admin_required  # 仅管理员
-def create_textbook():
-    pass
-```
+- [ ] 登录后能看到订单管理菜单
+- [ ] 订单列表只显示 order_person 是自己的订单
+- [ ] 创建订单时，订购人下拉框只有自己且被锁定
+- [ ] 能成功创建 order_person 是自己的订单
+- [ ] 不能创建 order_person 是其他人的订单
+- [ ] 只能取消自己的待审核订单
+- [ ] 不能审核订单
 
-#### 方式2：装饰器检查多个角色
-```python
-@api_v1.route('/stock-ins', methods=['POST'])
-@jwt_required()
-@permission_required(['管理员', '仓库管理员'])
-def create_stock_in():
-    pass
-```
+### 6.2 教师用户测试
 
-#### 方式3：代码内部检查数据权限
-```python
-from flask_jwt_extended import get_jwt_identity
+- [ ] 订单列表显示 order_person 是自己 **或** 普通用户的订单
+- [ ] 创建订单时，订购人下拉框包含自己和所有普通用户
+- [ ] 能成功创建 order_person 是自己的订单
+- [ ] 能成功创建 order_person 是普通用户的订单
+- [ ] 不能创建 order_person 是其他教师/管理员的订单
+- [ ] 能取消自己或普通用户的待审核订单
+- [ ] 不能取消其他教师的订单
+- [ ] 不能审核订单
 
-@api_v1.route('/requisitions', methods=['GET'])
-@jwt_required()
-def get_requisitions():
-    current_user = get_jwt_identity()
-    role = current_user.get('role')
-    
-    # 管理员和仓库管理员可以查看所有记录
-    if role in ['管理员', '仓库管理员']:
-        items, total = requisition_dao.paginate(...)
-    else:
-        # 教师和普通用户只能查看自己的记录
-        filters = {'requisition_person': current_user.get('real_name')}
-        items, total = requisition_dao.paginate(..., filters=filters)
-    
-    return paginated_response(items, total, page, per_page)
-```
+### 6.3 管理员/仓库管理员测试
 
-### 5.2 存储过程调用方式
-
-```python
-from sqlalchemy import text
-from app.extensions import db
-
-# 无参数存储过程
-result = db.session.execute(text("CALL sp_inventory_warning()"))
-rows = result.fetchall()
-
-# 有参数存储过程
-result = db.session.execute(
-    text("CALL sp_statistics_by_textbook(:textbook_id)"),
-    {"textbook_id": 1}
-)
-
-# 输出参数存储过程
-db.session.execute(text("CALL sp_generate_order_no(@order_no)"))
-result = db.session.execute(text("SELECT @order_no"))
-order_no = result.scalar()
-```
-
----
-
-## 六、测试检查清单
-
-实施完成后需要验证：
-
-- [ ] 管理员可以访问所有功能
-- [ ] 仓库管理员不能编辑教材、出版社等基础数据
-- [ ] 教师不能进行入库操作
-- [ ] 教师只能查看自己的订单和领用记录
-- [ ] 普通用户不能查看统计报表
-- [ ] 普通用户只能查看自己的领用记录
-- [ ] 领用审批后自动扣减库存（触发器生效）
-- [ ] 入库后自动增加库存（触发器生效）
-- [ ] 所有存储过程都被正确调用
-- [ ] 生成的单号格式正确且连续
+- [ ] 订单列表显示所有订单
+- [ ] 创建订单时，订购人下拉框包含所有用户
+- [ ] 能为任何人创建订单
+- [ ] 能审核任何待审核订单
+- [ ] 能取消任何未完成订单
 
 ---
 
 ## 七、总结
 
-### 触发器 vs 存储过程
+### v2.0 核心变更
 
-- **触发器**：数据库自动执行，无需代码调用，用于保证数据一致性
-  - 例如：入库自动更新库存、领用自动扣减库存
-
-- **存储过程**：需要在Python代码中显式调用，用于复杂查询和业务逻辑
-  - 例如：生成单号、统计查询
+1. **修正 JWT 用户名获取**：`get('sub')` → `get('username')`
+2. **明确订单数据权限边界**：
+   - 普通用户：只能操作自己的订单
+   - 教师：可以操作自己和普通用户的订单
+   - 管理员/仓库管理员：无限制
+3. **完善取消订单权限**：教师可以取消普通用户的待审核订单
 
 ### 权限控制核心思想
 
 1. **角色分离**：不同角色有明确的职责边界
 2. **最小权限原则**：只给必要的权限，降低误操作风险
-3. **数据隔离**：非管理员只能查看/操作自己的数据
-4. **业务保护**：基础数据（教材、出版社）只有管理员可修改
+3. **数据隔离**：基于 `order_person` 字段进行数据权限隔离
+4. **层级控制**：教师可以管理普通用户，但不能越级管理
 
 ---
 
-**文档版本**: 1.0  
-**创建日期**: 2026-01-10  
+**文档版本**: 2.0  
+**更新日期**: 2026-01-10  
+**主要变更**: 修正订单管理数据权限规则  
 **维护人**: AI Assistant

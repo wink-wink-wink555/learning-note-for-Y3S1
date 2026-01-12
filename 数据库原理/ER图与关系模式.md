@@ -104,16 +104,16 @@ erDiagram
         TINYINT status "状态"
     }
 
-    %% 关系定义
-    PUBLISHER ||--o{ TEXTBOOK : "出版"
-    TEXTBOOK_TYPE ||--o{ TEXTBOOK : "分类"
-    TEXTBOOK_TYPE ||--o| TEXTBOOK_TYPE : "包含子类型"
-    TEXTBOOK ||--o{ PURCHASE_ORDER : "被订购"
-    TEXTBOOK ||--o{ STOCK_IN : "被入库"
-    TEXTBOOK ||--|| INVENTORY : "库存记录"
-    PURCHASE_ORDER ||--o{ STOCK_IN : "对应入库"
-    USER ||--o{ PURCHASE_ORDER : "创建"
-    USER ||--o{ STOCK_IN : "管理"
+    %% 关系定义 - 添加了基数标注
+    PUBLISHER ||--o{ TEXTBOOK : "1:N (一家出版社可以出版多本教材)"
+    TEXTBOOK_TYPE ||--o{ TEXTBOOK : "1:N (一个类型下可以有多本教材)"
+    TEXTBOOK_TYPE ||--o| TEXTBOOK_TYPE : "1:0..N (一个父类型可以有零个或多个子类型)"
+    TEXTBOOK ||--o{ PURCHASE_ORDER : "1:N (一本教材可以被多次订购)"
+    TEXTBOOK ||--o{ STOCK_IN : "1:N (一本教材可以有多次入库记录)"
+    TEXTBOOK ||--|| INVENTORY : "1:1 (一本教材对应一条库存记录)"
+    PURCHASE_ORDER ||--o{ STOCK_IN : "1:N (一个订单可以对应多次入库操作)"
+    USER ||--o{ PURCHASE_ORDER : "1:N (一个用户可以创建多个订单)"
+    USER ||--o{ STOCK_IN : "1:N (一个用户可以管理多个入库单)"
 ```
 
 ---
@@ -362,5 +362,6 @@ User (
 
 > 📅 文档生成时间：2026年1月12日  
 > 📁 对应SQL文件：`sql/02_create_tables.sql`
+
 
 

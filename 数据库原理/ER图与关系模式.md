@@ -77,7 +77,7 @@ erDiagram
 
     INVENTORY {
         INT inventory_id PK "库存ID"
-        INT textbook_id FK "教材ID"  -- 修正：移除了 FK_UK，改用 FK
+        INT textbook_id FK "教材ID"
         INT current_quantity "当前库存数量"
         INT total_in_quantity "累计入库数量"
         INT total_out_quantity "累计出库数量"
@@ -362,4 +362,5 @@ User (
 
 > 📅 文档生成时间：2026年1月12日  
 > 📁 对应SQL文件：`sql/02_create_tables.sql`
+
 
